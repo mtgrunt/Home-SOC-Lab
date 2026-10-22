@@ -1,0 +1,31 @@
+# OS / filesystem
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+$RECYCLE.BIN/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Secrets & local artifacts — never commit these
+*.kdbx
+*.key
+*.pem
+*.pfx
+secrets*
+*-passwords*.txt
+wazuh-install-files.tar
+
+# Raw logs / event exports / captures
+*.evtx
+*.pcap
+*.log
+
+# Backups / temp
+*.bak
+*.tmp
+*.orig

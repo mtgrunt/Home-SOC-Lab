@@ -1,0 +1,155 @@
+<!--
+  Home SOC Lab - custom Wazuh rules
+  Deployed to the manager at /var/ossec/etc/rules/local_rules.xml (appended).
+  Custom rule IDs use the 100000+ range.
+-->
+
+<!-- Scenario 5: Scheduled task persistence (T1053.005) -->
+<group name="local,windows,persistence,">
+
+  <!-- Built-in 60228 fires at level 4 on every 4698. Escalate when the task runs a script interpreter.
+       Wazuh stores taskContent HTML-encoded (Command&gt;powershell.exe), so "Command.{1,4}?" covers both "&gt;" and ">". -->
+  <rule id="100200" level="10">
+    <if_sid>60228</if_sid>
+    <field name="win.eventdata.taskContent" type="pcre2">(?i)Command.{1,4}?"?([^;"\s]*\\)?(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32)(\.exe)?\b</field>
+    <description>Scheduled task created that runs a script interpreter: $(win.eventdata.taskName)</description>
+    <mitre>
+      <id>T1053.005</id>
+    </mitre>
+  </rule>
+
+  <!-- Sysmon 1: hidden PowerShell launched by the Task Scheduler service host. Built-in rules leave this at level 0. -->
+  <rule id="100201" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\svchost\.exe$</field>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)-k\s+netsvcs</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)-w(indowstyle)?\s+h(idden)?\b</field>
+    <description>Hidden PowerShell started by Task Scheduler as $(win.eventdata.user): $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1053.005</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<!-- Scenario 2: Encoded PowerShell (T1059.001, T1027) -->
+<group name="local,windows,execution,">
+
+  <!-- Sysmon 1: PowerShell started with an encoded command. Built-in: only 67027 (4688) at level 3.
+       Covers -e, -ec, -en..., -enc, -EncodedCommand, and the /enc form, followed by a Base64 blob. -->
+  <rule id="100220" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\s[-/](e|ec|en[a-z]*)\s+[A-Za-z0-9+/]{20,}={0,2}</field>
+    <description>Encoded PowerShell command executed by $(win.eventdata.user), parent $(win.eventdata.parentImage)</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1027</id>
+    </mitre>
+  </rule>
+
+  <!-- Allow-list: Claude Code (VS Code extension) runs its PowerShell tool calls as pwsh -EncodedCommand.
+       Pinned to the full install path (any version), so a renamed "claude.exe" elsewhere still alerts. -->
+  <rule id="100221" level="0">
+    <if_sid>100220</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\\.vscode\\extensions\\anthropic\.claude-code-[^\\]+\\resources\\native-binary\\claude\.exe$</field>
+    <description>Encoded PowerShell from allow-listed automation (Claude Code)</description>
+  </rule>
+
+</group>
+
+<!-- Scenario 6: Security log cleared (T1070.001) -->
+<group name="local,windows,defense_evasion,">
+
+  <!-- Built-in 63103 fires at level 5 on Event 1102. A cleared Security log should never be routine. -->
+  <rule id="100210" level="12">
+    <if_sid>63103</if_sid>
+    <description>Security audit log cleared on $(win.system.computer) (Event 1102)</description>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Sysmon 1: wevtutil clearing a log. Matches only "cl" / "clear-log", not read-only uses like "gl" or "epl". -->
+  <rule id="100211" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\wevtutil\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\s(cl|clear-log)\s+\S</field>
+    <description>Event log cleared with wevtutil by $(win.eventdata.user): $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1070.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Sysmon 1: PowerShell clearing a log. -->
+  <rule id="100212" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(?i)\\(powershell|pwsh)\.exe$</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(Clear-EventLog|Remove-EventLog|\.ClearLog\(|wevtutil(\.exe)?\s+(cl|clear-log)\s)</field>
+    <description>Event log cleared with PowerShell by $(win.eventdata.user): $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1070.001</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<!-- Scenario 1: RDP/SMB brute force (T1110.001) -->
+<!-- Windows logon events carry the attacker IP in win.eventdata.ipAddress, NOT srcip,
+     so the built-in same_source_ip correlation never matches. We correlate on the real field. -->
+<group name="local,windows,authentication_failures,">
+
+  <!-- Brute force in progress: repeated failed logons (60122) from one source IP. -->
+  <rule id="100230" level="10" frequency="4" timeframe="120">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Possible brute force: multiple logon failures from $(win.eventdata.ipAddress) targeting $(win.eventdata.targetUserName)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+  </rule>
+
+  <!-- Successful logon (92657) from an IP that just produced repeated failures = likely cracked. -->
+  <rule id="100231" level="12" frequency="2" timeframe="300">
+    <if_sid>92657</if_sid>
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <description>Possible SUCCESSFUL brute force: logon success for $(win.eventdata.targetUserName) from $(win.eventdata.ipAddress) after repeated failures</description>
+    <mitre>
+      <id>T1110.001</id>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+</group>
+
+<!-- Scenario 3: LSASS credential access (T1003.001) -->
+<!-- Requires Sysmon ProcessAccess monitoring for lsass (enabled in configs/sysmonconfig.xml; off in the stock SwiftOnSecurity config). -->
+<group name="local,windows,credential_access,">
+
+  <!-- Classic credential-dumping access masks against lsass (mimikatz/procdump/comsvcs). -->
+  <rule id="100240" level="12">
+    <if_group>sysmon_event_10</if_group>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <field name="win.eventdata.grantedAccess" type="pcre2">(?i)^0x1(010|038|40|410|418|438|43a|fffff|f1fff|f2fff|f3fff)$</field>
+    <description>Possible LSASS credential dump: $(win.eventdata.sourceImage) opened lsass with $(win.eventdata.grantedAccess)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- A script interpreter / LOLBin opening a handle to lsass at all has no legitimate reason to. -->
+  <rule id="100241" level="12">
+    <if_group>sysmon_event_10</if_group>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <field name="win.eventdata.sourceImage" type="pcre2">(?i)\\(powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32|wmic|net1?|reg)\.exe$</field>
+    <description>Suspicious process $(win.eventdata.sourceImage) accessed lsass ($(win.eventdata.grantedAccess))</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+</group>
