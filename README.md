@@ -22,9 +22,9 @@ A home Security Operations Center (SOC) lab where I stood up a Wazuh SIEM, gener
 
 ## Objectives
 - Stand up a Wazuh SIEM (manager, indexer, dashboard) and forward Windows endpoint logs to it
-- Enrich Windows telemetry with **Sysmon** and **PowerShell Script Block Logging**
-- Emulate attacker techniques mapped to **MITRE ATT&CK** in a contained lab
-- **Write, tune, and validate custom Wazuh detection rules** — field matching, correlation, and allow-lists
+- Enrich Windows telemetry with Sysmon and PowerShell Script Block Logging
+- Emulate attacker techniques mapped to MITRE ATT&CK in a contained lab
+- Write, tune, and validate custom Wazuh detection rules — field matching, correlation, and allow-lists
 - Document each investigation as an incident report: timeline, evidence, detection logic, tuning, response
 
 ---
