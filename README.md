@@ -172,7 +172,7 @@ Home-SOC-Lab/
 ## Skills Demonstrated
 - SIEM deployment and log-pipeline engineering (Wazuh manager/indexer/dashboard + agent)
 - Windows Event Log, PowerShell, and Sysmon telemetry engineering — including tuning the Sysmon config to close a visibility gap
-- **Detection engineering in Wazuh:** PCRE2 field matching, correlation (`frequency`/`timeframe`/`same_field`), severity escalation, and allow-listing
+- Detection engineering in Wazuh: PCRE2 field matching, correlation (`frequency`/`timeframe`/`same_field`), severity escalation, and allow-listing
 - Adversary emulation with Kali Linux / Hydra, mapped to MITRE ATT&CK
 - Alert triage and incident documentation (timeline, evidence, tuning, response)
 - Network segmentation and troubleshooting (UniFi VLANs, host-only VM isolation)
