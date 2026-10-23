@@ -2,7 +2,7 @@
 
 A home Security Operations Center (SOC) lab where I stood up a Wazuh SIEM, generated realistic Windows endpoint telemetry, emulated six attacker techniques from a Kali VM and wrote and tuned custom detection rules; documenting each as a mini incident report with evidence.
 
-**Status:** ✅ Complete — 6/6 scenarios detected with evidence, backed by **11 custom Wazuh rules**.
+**Status:** ✅ Complete — 6/6 scenarios detected with evidence, backed by 11 custom Wazuh rules.
 
 ---
 
