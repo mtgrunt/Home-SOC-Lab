@@ -46,7 +46,7 @@ flowchart LR
     W -->|"logs: TCP 1514/1515<br/>(UniFi allow policy)"| WZ
 ```
 
-The endpoint and server sit on separate UniFi VLANs. A single zone-based firewall policy allows only the endpoint → server traffic the lab needs (TCP 22, 443, 1514, 1515); see [`docs/04-wazuh-agent.md`](docs/04-wazuh-agent.md#1-make-sure-the-endpoint-can-reach-the-manager). The attacker is a Kali VM on a host-only network **inside** the Windows PC, so all attack traffic stays off the real LAN.
+The endpoint and server sit on separate UniFi VLANs. A single zone-based firewall policy allows only the endpoint → server traffic the lab needs (TCP 22, 443, 1514, 1515); see [`docs/04-wazuh-agent.md`](docs/04-wazuh-agent.md#1-make-sure-the-endpoint-can-reach-the-manager). The attacker is a Kali VM on a host-only network inside the Windows PC, so all attack traffic stays off the real LAN.
 
 | Host           | OS                     | Role                                                | Specs                                      |
 | -------------- | ---------------------- | --------------------------------------------------- | ------------------------------------------ |
